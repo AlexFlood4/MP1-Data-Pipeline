@@ -1,0 +1,8 @@
+{
+  "status": "ok",
+  "count": 2,
+  "results": [
+    {"id": 1, "region": "North", "product": "Widget", "units": 12},
+    {"id": 2, "region": "South", "product": "Gadget", "units": 5}
+  ]
+}

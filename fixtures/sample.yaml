@@ -1,0 +1,9 @@
+pipeline:
+  name: sales-cleaner
+  version: 1
+input:
+  path: fixtures/sample.csv
+  format: csv
+output:
+  format: json
+  drop_missing: true
