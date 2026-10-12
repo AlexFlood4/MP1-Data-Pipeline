@@ -10,22 +10,18 @@ import argparse
 import json
 import logging
 import sys
-from pathlib import Path
 
-from data_loaders import load_data
-from data_processor import process_data, create_cleaning_report
+from src import (
+    create_cleaning_report,
+    load_data,
+    process_data,
+    save_data,
+    setup_logging,
+    validate_dataframe,
+    validate_input,
+)
 
 logger = logging.getLogger(__name__)
-
-
-def setup_logging(verbose=False):
-    """Configure logging for the pipeline."""
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
-        datefmt="%H:%M:%S",
-    )
 
 
 def parse_arguments():
@@ -40,15 +36,6 @@ def parse_arguments():
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Enable verbose logging")
     return parser.parse_args()
-
-
-def validate_input(filepath):
-    """Check whether the input path exists and is a file."""
-    if not Path(filepath).is_file():
-        logger.error("Input file not found: %s", filepath)
-        return False
-    logger.info("Input file validated: %s", filepath)
-    return True
 
 
 def main():
@@ -70,6 +57,16 @@ def main():
     except ValueError:
         sys.exit(1)
 
+    required_columns = config["validation"]["required_columns"]
+    numeric_columns = config["validation"]["numeric_columns"]
+
+    rows_loaded = len(data)
+    try:
+        data = validate_dataframe(data, required_columns, numeric_columns)
+    except ValueError:
+        sys.exit(1)
+    logger.info("Validation complete: %d → %d rows", rows_loaded, len(data))
+
     data_before = data.copy()
 
     try:
@@ -78,12 +75,14 @@ def main():
         sys.exit(1)
 
     report = create_cleaning_report(data_before, data_cleaned)
-    print(json.dumps(report, indent=2))
     logger.info("Processing complete: %d → %d rows",
                 report["rows_before"], report["rows_after"])
 
-    data_cleaned.to_csv(args.output, index=False)
-    logger.info("Saved cleaned data to %s", args.output)
+    output_path = save_data(data_cleaned, args.output)
+    logger.info("Saved cleaned data to %s", output_path)
+
+    print("\nCleaning report:")
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":
